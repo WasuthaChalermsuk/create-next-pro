@@ -1,11 +1,31 @@
 import * as path from 'path';
 import chalk from 'chalk';
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import { parseArguments, getProjectNameFromArgs } from './cli';
 import { runPrompts } from './prompts';
 import { scaffoldProject } from './template';
 import { installDependencies, initializeGit } from './utils';
 import { PromptAnswers } from './types';
+
+const isInteractive = process.stdin.isTTY && process.stdout.isTTY;
+
+function createSpinner(text: string): { start: () => void; succeed: (msg: string) => void; fail: (msg: string) => void } {
+  if (isInteractive) {
+    const spinner = ora(text).start();
+    return {
+      start: () => spinner.start(text),
+      succeed: (msg: string) => spinner.succeed(msg),
+      fail: (msg: string) => spinner.fail(msg),
+    };
+  }
+  // Non-interactive mode: use plain console
+  console.log(`- ${text}`);
+  return {
+    start: () => {},
+    succeed: (msg: string) => console.log(`  ${chalk.green('✓')} ${msg}`),
+    fail: (msg: string) => console.log(`  ${chalk.red('✗')} ${msg}`),
+  };
+}
 
 async function main() {
   console.log(chalk.bold.blue('\n🚀 Create Next Pro\n'));
@@ -24,7 +44,7 @@ async function main() {
 
     const answers: PromptAnswers = await runPrompts(cliOptions, projectNameArg);
 
-    const spinner = ora('Creating project...').start();
+    const spinner = createSpinner('Creating project...');
 
     const templatesDir = path.join(__dirname, '..', 'templates');
     scaffoldProject(answers, templatesDir);
@@ -32,13 +52,13 @@ async function main() {
     spinner.succeed('Project created');
 
     if (!cliOptions.skipInstall) {
-      const installSpinner = ora('Installing dependencies...').start();
+      const installSpinner = createSpinner('Installing dependencies...');
       installDependencies(answers.projectName, answers.pm);
       installSpinner.succeed('Dependencies installed');
     }
 
     if (answers.initializeGit) {
-      const gitSpinner = ora('Initializing git...').start();
+      const gitSpinner = createSpinner('Initializing git...');
       initializeGit(answers.projectName);
       gitSpinner.succeed('Git initialized');
     }

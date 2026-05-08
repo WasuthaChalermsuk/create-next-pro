@@ -14,6 +14,17 @@ const packageManagers = [
 ];
 
 export async function runPrompts(cliOptions: CLIOptions, projectNameArg?: string): Promise<PromptAnswers> {
+  // Non-interactive mode: use defaults when no TTY available (CI, piped input, etc.)
+  if (!process.stdin.isTTY) {
+    return {
+      projectName: projectNameArg || 'next-pro-app',
+      template: cliOptions.template || 'basic',
+      withMock: cliOptions.withMock ?? false,
+      pm: cliOptions.pm || 'npm',
+      initializeGit: false,
+    };
+  }
+
   const questions: any[] = [];
 
   if (!projectNameArg) {
